@@ -3,17 +3,15 @@ const uuid = require("uuid");
 const server = express();
 
 server.use(express.json());
-server.use(express.static("public")); // Do not remove this line. This allows the test suite to start multiple instances of your server on different ports
-
+server.use(express.static("public"));
 let activeSessions = {};
-
 async function chooseWordAPI() {
-  // Function for future word selection API
+
 }
 
 server.get("/newgame", (req, res) => {
   let setWord = req.query.answer;
-  const defaultWord = "apple";
+  const defaultWord = "apple" ;
   const isGameOver = false;
 
   setWord = setWord && setWord.length === 5 ? setWord : defaultWord;
@@ -45,94 +43,86 @@ server.get("/gamestate", (req, res) => {
 });
 
 server.post("/guess", (req, res) => {
-    let sessionID = req.body.sessionID;
-    let userGuess = req.body.guess;
+    const ID = req.body.sessionID;
+    const guess = req.body.guess;
 
-
-    if (!sessionID) {
-        return res.status(400).json({ error: "Session ID is missing" });
+    if (!ID) {
+        res.status(400).send({ error: "id is missing" });
+        return;
     }
 
+    const game = activeSessions[ID];
+    if (!game) {
+        res.status(404).send({ error: "game doesn't exist" });
+        return;
+    }
 
-    if (activeSessions[sessionID]) {
-        let game = activeSessions[sessionID];
-        let guessLetters = userGuess.split("");
+    const guessCheck = guess.split("");
+    if (guessCheck.length !== 5) {
+        res.status(400).send({ error: "guess is not 5 letters long" });
+        return;
+    }
 
+    const word = game.wordToGuess.split("");
+    const guessArr = [];
+    game.remainingGuesses -= 1;
 
-        if (guessLetters.length !== 5) {
-            return res.status(400).json({ error: "Guess must be exactly 5 letters long" });
-        }
-
-
-        let wordToGuess = game.wordToGuess.split("");
-        let guessResults = [];
-        game.remainingGuesses--;
-
-
-        if (userGuess === game.wordToGuess) {
-            game.gameOver = true;
-            game.rightLetters = guessLetters;
-        } else {
-            for (let i = 0; i < guessLetters.length; i++) {
-                let letter = guessLetters[i].toLowerCase();
-
-
-                if (!letter.match(/[a-z]/)) {
-                    return res.status(400).json({ error: "Guess contains invalid characters" });
-                }
-
-
-                let guessDetail = { value: letter };
-                let found = false;
-
-
-                for (let j = 0; j < wordToGuess.length; j++) {
-                    if (wordToGuess[j] === letter) {
-                        if (i === j) {
-                            if (game.closeLetters.includes(letter)) {
-                                let index = game.closeLetters.indexOf(letter);
-                                game.closeLetters.splice(index, 1);
-                            }
-                            game.rightLetters.push(letter);
-                            guessDetail.result = "RIGHT";
-                        } else {
-                            if (!game.closeLetters.includes(letter)) {
-                                game.closeLetters.push(letter);
-                            }
-                            guessDetail.result = "CLOSE";
-                        }
-                        found = true;
-                        break;
-                    }
-                }
-
-
-                if (!found) {
-                    game.wrongLetters.push(letter);
-                    guessDetail.result = "WRONG";
-                }
-
-
-                guessResults.push(guessDetail);
-            }
-        }
-
-
-        if (game.remainingGuesses === 0) {
-            game.gameOver = true;
-        }
-
-
-        game.guesses.push(guessResults);
-        return res.status(201).json({ gameState: game });
+    if (guess === game.wordToGuess) {
+        game.gameOver = true;
+        game.rightLetters = guessCheck;
     } else {
-        return res.status(404).json({ error: "Game does not exist" });
+        for (let i = 0; i < guessCheck.length; i++) {
+            const guessLetter = guessCheck[i].toLowerCase();
+
+            if (guessLetter.toLowerCase() === guessLetter.toUpperCase()) {
+                res.status(400).send({ error: "guess contains a number or a special character" });
+                return;
+            }
+
+            const guessObj = { value: guessLetter };
+            let included = false;
+
+            for (let j = 0; j < word.length; j++) {
+                if (word[j] === guessLetter) {
+                    if (j === i) {
+                        if (game.closeLetters.includes(guessLetter)) {
+                            game.closeLetters.splice(game.closeLetters.indexOf(guessLetter), 1);
+                        }
+                        if (game.rightLetters.includes(guessLetter)) {
+                            game.rightLetters.splice(game.rightLetters.indexOf(guessLetter), 1);
+                        }
+                        game.rightLetters.push(guessLetter);
+                        guessObj.result = "RIGHT";
+                    } else {
+                        if (!game.closeLetters.includes(guessLetter)) {
+                            game.closeLetters.push(guessLetter);
+                        }
+                        guessObj.result = "CLOSE";
+                    }
+                    included = true;
+                    break;
+                }
+            }
+
+            if (!included) {
+                game.wrongLetters.push(guessLetter);
+                guessObj.result = "WRONG";
+            }
+
+            guessArr.push(guessObj);
+        }
     }
+
+    if (game.remainingGuesses === 0) {
+        game.gameOver = true;
+    }
+
+    game.guesses.push(guessArr);
+    res.status(201).send({ gameState: game });
 });
 
 
-
-
-//Do not remove this line. This allows the test suite to start
-//multiple instances of your server on different ports
-module.exports = server;
+  
+  // Do not remove this line. This allows the test suite to start multiple instances of your server on different ports
+  module.exports = server;
+  
