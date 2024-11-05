@@ -121,6 +121,48 @@ server.post("/guess", (req, res) => {
     res.status(201).send({ gameState: game });
 });
 
+server.delete("/reset", (req, res) => {
+  const sessionId = req.query.sessionID;
+
+
+  if (!sessionId) {
+    return res.status(400).send({ error: "id is missing" });
+  }
+
+
+  if (activeSessions[sessionId]) {
+    activeSessions[sessionId] = {
+      wordToGuess: undefined,
+      guesses: [],
+      wrongLetters: [],
+      closeLetters: [],
+      rightLetters: [],
+      remainingGuesses: 6,
+      gameOver: false,
+    };
+    res.status(200).send({ gameState: activeSessions[sessionId] });
+  } else {
+    res.status(404).send({ error: "game doesn't exist" });
+  }
+});
+
+
+server.delete("/delete", (req, res) => {
+  const sessionId = req.query.sessionID;
+
+
+  if (!sessionId) {
+    return res.status(400).send({ error: "id is missing" });
+  }
+
+
+  if (activeSessions[sessionId]) {
+    delete activeSessions[sessionId];
+    res.status(204).send({ gameState: activeSessions });
+  } else {
+    res.status(404).send({ error: "game doesn't exist" });
+  }
+});
 
   
   // Do not remove this line. This allows the test suite to start multiple instances of your server on different ports
