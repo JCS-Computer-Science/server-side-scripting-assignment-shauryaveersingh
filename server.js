@@ -1,15 +1,24 @@
 const express = require("express");
 const uuid = require("uuid");
 const server = express();
-
 server.use(express.json());
 server.use(express.static("public"));
 let activeSessions = {};
-async function chooseWordAPI() {
-
+let wordList=[]
+let wordGenerated
+chooseWordAPI()
+async function chooseWordAPI(){
+    let response = await fetch("https://random-word-api.herokuapp.com/word?number=10000&length=5")
+    let data = await response.json()
+    wordList=data
 }
-
+async function wordOfDay(){
+  let response = await fetch("https://random-word-api.herokuapp.com/word?length=5")
+  let data = await response.json()
+  wordGenerated=data[0]
+}
 server.get("/newgame", (req, res) => {
+  wordOfDay()
   let setWord = req.query.answer;
   const defaultWord = "apple" ;
   const isGameOver = false;
@@ -74,39 +83,38 @@ server.post("/guess", (req, res) => {
         for (let i = 0; i < guessCheck.length; i++) {
             const guessLetter = guessCheck[i].toLowerCase();
 
-            if (guessLetter.toLowerCase() === guessLetter.toUpperCase()) {
-                res.status(400).send({ error: "guess contains a number or a special character" });
+         if (guessLetter.toLowerCase() === guessLetter.toUpperCase()) {
+      res.status(400).send({ error: "guess contains a number or a special character" });
                 return;
             }
 
-            const guessObj = { value: guessLetter };
-            let included = false;
+      const guessObj = { value: guessLetter };
+     let included = false;
 
-            for (let j = 0; j < word.length; j++) {
+       for (let j = 0; j < word.length; j++) {
                 if (word[j] === guessLetter) {
-                    if (j === i) {
-                        if (game.closeLetters.includes(guessLetter)) {
-                            game.closeLetters.splice(game.closeLetters.indexOf(guessLetter), 1);
+                 if (j === i) {
+                if (game.closeLetters.includes(guessLetter)) {
+                     game.closeLetters.splice(game.closeLetters.indexOf(guessLetter), 1);
                         }
-                        if (game.rightLetters.includes(guessLetter)) {
+             if (game.rightLetters.includes(guessLetter)) {
                             game.rightLetters.splice(game.rightLetters.indexOf(guessLetter), 1);
-                        }
-                        game.rightLetters.push(guessLetter);
-                        guessObj.result = "RIGHT";
+                     }
+             game.rightLetters.push(guessLetter);
+                  guessObj.result = "RIGHT";
                     } else {
                         if (!game.closeLetters.includes(guessLetter)) {
-                            game.closeLetters.push(guessLetter);
-                        }
-                        guessObj.result = "CLOSE";
+                    game.closeLetters.push(guessLetter);
+  
+                                          }                  guessObj.result = "CLOSE";
                     }
-                    included = true;
-                    break;
+            included = true;
+              break;
                 }
             }
-
-            if (!included) {
-                game.wrongLetters.push(guessLetter);
-                guessObj.result = "WRONG";
+        if (!included) {
+           game.wrongLetters.push(guessLetter);
+           guessObj.result = "WRONG";
             }
 
             guessArr.push(guessObj);
@@ -123,8 +131,6 @@ server.post("/guess", (req, res) => {
 
 server.delete("/reset", (req, res) => {
   const sessionId = req.query.sessionID;
-
-
   if (!sessionId) {
     return res.status(400).send({ error: "id is missing" });
   }
@@ -145,17 +151,11 @@ server.delete("/reset", (req, res) => {
     res.status(404).send({ error: "game doesn't exist" });
   }
 });
-
-
 server.delete("/delete", (req, res) => {
   const sessionId = req.query.sessionID;
-
-
   if (!sessionId) {
     return res.status(400).send({ error: "id is missing" });
   }
-
-
   if (activeSessions[sessionId]) {
     delete activeSessions[sessionId];
     res.status(204).send({ gameState: activeSessions });
@@ -163,8 +163,6 @@ server.delete("/delete", (req, res) => {
     res.status(404).send({ error: "game doesn't exist" });
   }
 });
-
-  
   // Do not remove this line. This allows the test suite to start multiple instances of your server on different ports
   module.exports = server;
   
